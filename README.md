@@ -37,6 +37,10 @@ evaluation loops.
 uv sync --dev
 ```
 
+## Contributing
+
+See `CONTRIBUTING.md` for branch strategy, PR expectations, and merge flow.
+
 ## CLI
 
 ```bash
