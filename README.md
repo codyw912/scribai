@@ -59,6 +59,7 @@ Optional quick overrides:
 - `--text-model <model_id>`
 - `--ocr-model <model_id>`
 - `--artifacts-root <path>`
+- `--output <dir>` copies the final exported outputs to a user-facing directory
 
 Validate profile + input before running:
 
@@ -81,6 +82,7 @@ uv run scriba status \
 - `scriba run --profile ... --input ... [--run-id ...] [--resume]`
 - `scriba run --input ...` (defaults to `--preset auto`)
 - `scriba run --preset <auto|openrouter|cerebras|openai|passthrough> --input ...`
+- `scriba run ... --output <dir>` copies `artifacts/<run_id>/final/` to `<dir>`
 - `scriba status --profile ... --run-id ...`
 - `scriba status --run-id ...` (defaults to `--preset auto`)
 - `scriba status --preset <auto|openrouter|cerebras|openai|passthrough> --run-id ...`

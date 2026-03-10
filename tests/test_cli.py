@@ -180,6 +180,66 @@ def test_cli_run_passthrough_uses_runtime_native_home(
     assert '"run_id": "run-home-default"' in capsys.readouterr().out
 
 
+def test_cli_run_output_copies_final_directory(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SCRIBA_HOME", str(tmp_path / "home"))
+    input_file = tmp_path / "sample.md"
+    input_file.write_text("# Doc\n\nGET /v1/ping\n", encoding="utf-8")
+
+    output_dir = tmp_path / "copied-final"
+    run_code = main(
+        [
+            "run",
+            "--preset",
+            "passthrough",
+            "--input",
+            str(input_file),
+            "--run-id",
+            "run-copy-output",
+            "--output",
+            str(output_dir),
+        ]
+    )
+
+    assert run_code == 0
+    assert (output_dir / "merged.md").exists()
+    assert (output_dir / "index.md").exists()
+    assert (output_dir / "sections").is_dir()
+    assert "final outputs copied to:" in capsys.readouterr().err
+
+
+def test_cli_run_output_rejects_file_destination(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SCRIBA_HOME", str(tmp_path / "home"))
+    input_file = tmp_path / "sample.md"
+    input_file.write_text("# Doc\n\nGET /v1/ping\n", encoding="utf-8")
+    output_file = tmp_path / "out.md"
+    output_file.write_text("existing\n", encoding="utf-8")
+
+    run_code = main(
+        [
+            "run",
+            "--preset",
+            "passthrough",
+            "--input",
+            str(input_file),
+            "--run-id",
+            "run-copy-output-error",
+            "--output",
+            str(output_file),
+        ]
+    )
+
+    assert run_code == 2
+    assert "--output destination must be a directory path" in capsys.readouterr().err
+
+
 def test_cli_run_defaults_to_auto_preset_requires_provider_key(
     tmp_path: Path,
     capsys,

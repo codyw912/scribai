@@ -6,6 +6,7 @@ import argparse
 from dataclasses import dataclass, replace
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -85,6 +86,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument("--input", required=True, help="Path to local input file")
     run_parser.add_argument("--run-id", default=None, help="Optional explicit run id")
+    run_parser.add_argument(
+        "--output",
+        default=None,
+        help="Copy final exported outputs to this destination directory",
+    )
     run_parser.add_argument(
         "--artifacts-root",
         default=None,
@@ -182,6 +188,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 run_id=args.run_id,
                 resume=args.resume,
             )
+            if args.output:
+                output_path = _copy_final_outputs(
+                    artifacts_root=profile.artifacts.root,
+                    run_id=str(state["run_id"]),
+                    output_path=args.output,
+                )
+                print(f"final outputs copied to: {output_path}", file=sys.stderr)
             print(json.dumps(state, indent=2, sort_keys=True))
             _print_map_telemetry_summary(
                 profile_root=profile.artifacts.root, state=state
@@ -297,6 +310,21 @@ def _print_map_telemetry_summary(*, profile_root: Path, state: dict[str, Any]) -
         print(warning, file=sys.stderr)
 
     print(f"map manifest: {manifest_path}", file=sys.stderr)
+
+
+def _copy_final_outputs(*, artifacts_root: Path, run_id: str, output_path: str) -> Path:
+    source_dir = artifacts_root.expanduser().resolve() / run_id / "final"
+    if not source_dir.exists() or not source_dir.is_dir():
+        raise PipelineError(f"Final output directory not found: {source_dir}")
+
+    destination = Path(output_path).expanduser().resolve()
+    if destination.exists() and not destination.is_dir():
+        raise PipelineError(
+            f"--output destination must be a directory path: {destination}"
+        )
+
+    shutil.copytree(source_dir, destination, dirs_exist_ok=True)
+    return destination
 
 
 def _load_profile_for_command(
