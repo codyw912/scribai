@@ -313,6 +313,51 @@ def main() -> int:
                             key="hallucinated_heading_count",
                         )
                     ),
+                    "omission_severity_bucket": (
+                        None
+                        if not run_id
+                        else _quality_metric(
+                            artifacts_root=artifacts_root,
+                            run_id=run_id,
+                            key="omission_severity_bucket",
+                        )
+                    ),
+                    "omitted_endpoint_count": (
+                        None
+                        if not run_id
+                        else _quality_metric(
+                            artifacts_root=artifacts_root,
+                            run_id=run_id,
+                            key="omitted_endpoint_count",
+                        )
+                    ),
+                    "omitted_heading_count": (
+                        None
+                        if not run_id
+                        else _quality_metric(
+                            artifacts_root=artifacts_root,
+                            run_id=run_id,
+                            key="omitted_heading_count",
+                        )
+                    ),
+                    "omitted_path_count": (
+                        None
+                        if not run_id
+                        else _quality_metric(
+                            artifacts_root=artifacts_root,
+                            run_id=run_id,
+                            key="omitted_path_count",
+                        )
+                    ),
+                    "omitted_number_count": (
+                        None
+                        if not run_id
+                        else _quality_metric(
+                            artifacts_root=artifacts_root,
+                            run_id=run_id,
+                            key="omitted_number_count",
+                        )
+                    ),
                     "contract_recall": (
                         None
                         if not run_id
@@ -1029,13 +1074,13 @@ def main() -> int:
             [
                 "## Benchmark Lane Summary",
                 "",
-                "| lane | source_kind | rows | avg_quality | avg_char_er | avg_word_er | avg_code_integrity | avg_table_retention | avg_hallucination_rate | avg_contract_recall | hard_error_runs |",
-                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "| lane | source_kind | rows | avg_quality | avg_char_er | avg_word_er | avg_code_integrity | avg_table_retention | avg_hallucination_rate | avg_contract_recall | none | low | medium | high | critical | hard_error_runs |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             ]
         )
         for bucket in benchmark_lane_summary_rows:
             lines.append(
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
                     _fmt(bucket.get("lane")),
                     _fmt(bucket.get("source_kind")),
                     _fmt(bucket.get("rows")),
@@ -1046,6 +1091,11 @@ def main() -> int:
                     _fmt(bucket.get("avg_table_retention_score")),
                     _fmt(bucket.get("avg_hallucination_rate")),
                     _fmt(bucket.get("avg_contract_recall")),
+                    _fmt(bucket.get("omission_none_rows")),
+                    _fmt(bucket.get("omission_low_rows")),
+                    _fmt(bucket.get("omission_medium_rows")),
+                    _fmt(bucket.get("omission_high_rows")),
+                    _fmt(bucket.get("omission_critical_rows")),
                     _fmt(bucket["hard_error_runs"]),
                 )
             )
@@ -1078,13 +1128,13 @@ def main() -> int:
                 "",
                 "## Benchmark Lane Rows",
                 "",
-                "| run_id | fixture_id | variant_id | variant_family | noise_level | source_kind | lane | size_bucket | doc_type | quality | char_er | word_er | code_integrity | table_retention | hallucination_rate | endpoint_recall | heading_recall | contract_recall | contract_failures | hard_errors |",
-                "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "| run_id | fixture_id | variant_id | variant_family | noise_level | source_kind | lane | size_bucket | doc_type | quality | char_er | word_er | code_integrity | table_retention | hallucination_rate | omission_bucket | omitted_endpoints | omitted_headings | contract_recall | contract_failures | hard_errors |",
+                "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|",
             ]
         )
         for row in benchmark_lane_rows:
             lines.append(
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
                     _fmt(row.get("run_id")),
                     _fmt(row.get("fixture_id")),
                     _fmt(row.get("variant_id")),
@@ -1100,8 +1150,9 @@ def main() -> int:
                     _fmt(row.get("code_block_integrity_score")),
                     _fmt(row.get("table_retention_score")),
                     _fmt(row.get("hallucination_rate")),
-                    _fmt(row.get("endpoint_recall")),
-                    _fmt(row.get("heading_recall")),
+                    _fmt(row.get("omission_severity_bucket")),
+                    _fmt(row.get("omitted_endpoint_count")),
+                    _fmt(row.get("omitted_heading_count")),
                     _fmt(row.get("contract_recall")),
                     _fmt(row.get("contract_failures")),
                     _fmt(row.get("hard_errors")),
@@ -1114,15 +1165,15 @@ def main() -> int:
         [
             "## Per Run",
             "",
-            "| timestamp | campaign_id | preset | profile | adapter | topology | provider | input | fixture_id | variant_id | variant_family | noise_level | source_kind | run_id | status | processed | tok_s | visible_tok_s | latency_s | completion_tokens | output_tokens_est | completion_output_ratio | reasoning_heavy | speed_gate_ok | quality | base_quality | content_f1 | char_er | word_er | code_integrity | table_retention | hallucination_rate | endpoint_recall | endpoint_precision | heading_recall | heading_precision | contract_recall | contract_failures | quality_gate_ok | source | doctor_warning_count | doctor_warning_preview | validation_ok | hard_errors | missing_endpoints |",
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---|---|---:|---:|",
+            "| timestamp | campaign_id | preset | profile | adapter | topology | provider | input | fixture_id | variant_id | variant_family | noise_level | source_kind | run_id | status | processed | tok_s | visible_tok_s | latency_s | completion_tokens | output_tokens_est | completion_output_ratio | reasoning_heavy | speed_gate_ok | quality | base_quality | content_f1 | char_er | word_er | code_integrity | table_retention | hallucination_rate | omission_bucket | omitted_endpoints | omitted_headings | omitted_paths | omitted_numbers | endpoint_recall | endpoint_precision | heading_recall | heading_precision | contract_recall | contract_failures | quality_gate_ok | source | doctor_warning_count | doctor_warning_preview | validation_ok | hard_errors | missing_endpoints |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---|---|---:|---:|",
         ]
     )
 
     if rows:
         for row in rows:
             lines.append(
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
                     _fmt(row["timestamp"]),
                     _fmt(row["campaign_id"]),
                     _fmt(row["preset"]),
@@ -1155,6 +1206,11 @@ def main() -> int:
                     _fmt(row.get("code_block_integrity_score")),
                     _fmt(row.get("table_retention_score")),
                     _fmt(row.get("hallucination_rate")),
+                    _fmt(row.get("omission_severity_bucket")),
+                    _fmt(row.get("omitted_endpoint_count")),
+                    _fmt(row.get("omitted_heading_count")),
+                    _fmt(row.get("omitted_path_count")),
+                    _fmt(row.get("omitted_number_count")),
                     _fmt(row["endpoint_recall"]),
                     _fmt(row.get("endpoint_precision")),
                     _fmt(row["heading_recall"]),
@@ -1172,7 +1228,7 @@ def main() -> int:
             )
     else:
         lines.append(
-            "| n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |"
+            "| n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |"
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1520,6 +1576,10 @@ def _quality_snapshot_from_paths(
     output_endpoints = _extract_endpoints(output_text)
     source_headings = _extract_headings(source_text)
     output_headings = _extract_headings(output_text)
+    source_paths = _extract_paths(source_text)
+    output_paths = _extract_paths(output_text)
+    source_numbers = _extract_numbers(source_text)
+    output_numbers = _extract_numbers(output_text)
     hallucinated_endpoint_count = len(output_endpoints - source_endpoints)
     hallucinated_heading_count = len(output_headings - source_headings)
     hallucination_denominator = len(output_endpoints) + len(output_headings)
@@ -1528,6 +1588,16 @@ def _quality_snapshot_from_paths(
         / hallucination_denominator
         if hallucination_denominator > 0
         else 0.0
+    )
+    omitted_endpoint_count = len(source_endpoints - output_endpoints)
+    omitted_heading_count = len(source_headings - output_headings)
+    omitted_path_count = len(source_paths - output_paths)
+    omitted_number_count = len(source_numbers - output_numbers)
+    omission_severity_bucket = _omission_severity_bucket(
+        omitted_endpoint_count=omitted_endpoint_count,
+        omitted_heading_count=omitted_heading_count,
+        omitted_path_count=omitted_path_count,
+        omitted_number_count=omitted_number_count,
     )
 
     weighted = (
@@ -1569,6 +1639,11 @@ def _quality_snapshot_from_paths(
         "hallucination_rate": round(hallucination_rate, 3),
         "hallucinated_endpoint_count": hallucinated_endpoint_count,
         "hallucinated_heading_count": hallucinated_heading_count,
+        "omission_severity_bucket": omission_severity_bucket,
+        "omitted_endpoint_count": omitted_endpoint_count,
+        "omitted_heading_count": omitted_heading_count,
+        "omitted_path_count": omitted_path_count,
+        "omitted_number_count": omitted_number_count,
     }
     _ADHOC_QUALITY_CACHE[cache_key] = snapshot
     return snapshot
@@ -1595,6 +1670,11 @@ def _empty_quality_snapshot() -> dict[str, object]:
         "hallucination_rate": None,
         "hallucinated_endpoint_count": None,
         "hallucinated_heading_count": None,
+        "omission_severity_bucket": None,
+        "omitted_endpoint_count": None,
+        "omitted_heading_count": None,
+        "omitted_path_count": None,
+        "omitted_number_count": None,
     }
 
 
@@ -1720,6 +1800,30 @@ def _structure_recall(*, source: set[str], output: set[str]) -> float | None:
     if not source:
         return None
     return len(source & output) / len(source)
+
+
+def _omission_severity_bucket(
+    *,
+    omitted_endpoint_count: int,
+    omitted_heading_count: int,
+    omitted_path_count: int,
+    omitted_number_count: int,
+) -> str:
+    weighted_score = (
+        omitted_endpoint_count * 4
+        + omitted_heading_count * 2
+        + min(omitted_path_count, 3)
+        + min(omitted_number_count, 2)
+    )
+    if weighted_score <= 0:
+        return "none"
+    if omitted_endpoint_count >= 2 or weighted_score >= 9:
+        return "critical"
+    if omitted_endpoint_count >= 1 or weighted_score >= 6:
+        return "high"
+    if weighted_score >= 3:
+        return "medium"
+    return "low"
 
 
 def _contract_metric(
@@ -1900,6 +2004,10 @@ def _benchmark_aggregate_rows(
             row.get("hallucination_rate"),
         )
         _append_bucket_metric(bucket, "contract_values", row.get("contract_recall"))
+        _increment_omission_bucket(
+            bucket,
+            row.get("omission_severity_bucket"),
+        )
         hard_errors = row.get("hard_errors")
         if isinstance(hard_errors, int) and hard_errors > 0:
             bucket["hard_error_runs"] = int(bucket["hard_error_runs"]) + 1
@@ -1931,6 +2039,11 @@ def _benchmark_aggregate_rows(
                 "avg_contract_recall": _avg_label(
                     bucket.get("contract_values"), precision=3
                 ),
+                "omission_none_rows": bucket.get("omission_none_rows"),
+                "omission_low_rows": bucket.get("omission_low_rows"),
+                "omission_medium_rows": bucket.get("omission_medium_rows"),
+                "omission_high_rows": bucket.get("omission_high_rows"),
+                "omission_critical_rows": bucket.get("omission_critical_rows"),
                 "hard_error_runs": bucket.get("hard_error_runs"),
             }
         )
@@ -1952,6 +2065,11 @@ def _new_benchmark_aggregate_bucket(
         "table_values": [],
         "hallucination_values": [],
         "contract_values": [],
+        "omission_none_rows": 0,
+        "omission_low_rows": 0,
+        "omission_medium_rows": 0,
+        "omission_high_rows": 0,
+        "omission_critical_rows": 0,
         "hard_error_runs": 0,
     }
     for group_key in group_keys:
@@ -1966,6 +2084,16 @@ def _append_bucket_metric(bucket: dict[str, object], key: str, value: object) ->
     if not isinstance(values, list):
         return
     values.append(float(value))
+
+
+def _increment_omission_bucket(bucket: dict[str, object], value: object) -> None:
+    if not isinstance(value, str):
+        return
+    normalized = value.strip().lower()
+    if normalized not in {"none", "low", "medium", "high", "critical"}:
+        return
+    key = f"omission_{normalized}_rows"
+    bucket[key] = int(bucket.get(key, 0)) + 1
 
 
 def _avg_label(values_obj: object, *, precision: int) -> str:
@@ -1990,12 +2118,12 @@ def _benchmark_cut_section_lines(
     lines = [
         f"## {title}",
         "",
-        f"| {label_key} | source_kind | rows | avg_quality | avg_char_er | avg_word_er | avg_code_integrity | avg_table_retention | avg_hallucination_rate | avg_contract_recall | hard_error_runs |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        f"| {label_key} | source_kind | rows | avg_quality | avg_char_er | avg_word_er | avg_code_integrity | avg_table_retention | avg_hallucination_rate | avg_contract_recall | none | low | medium | high | critical | hard_error_runs |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
                 _fmt(row.get(label_key)),
                 _fmt(row.get("source_kind")),
                 _fmt(row.get("rows")),
@@ -2006,6 +2134,11 @@ def _benchmark_cut_section_lines(
                 _fmt(row.get("avg_table_retention_score")),
                 _fmt(row.get("avg_hallucination_rate")),
                 _fmt(row.get("avg_contract_recall")),
+                _fmt(row.get("omission_none_rows")),
+                _fmt(row.get("omission_low_rows")),
+                _fmt(row.get("omission_medium_rows")),
+                _fmt(row.get("omission_high_rows")),
+                _fmt(row.get("omission_critical_rows")),
                 _fmt(row.get("hard_error_runs")),
             )
         )
@@ -2250,6 +2383,11 @@ def _benchmark_lane_rows_for_run(
                 "hallucination_rate": None,
                 "hallucinated_endpoint_count": None,
                 "hallucinated_heading_count": None,
+                "omission_severity_bucket": None,
+                "omitted_endpoint_count": None,
+                "omitted_heading_count": None,
+                "omitted_path_count": None,
+                "omitted_number_count": None,
                 **contract_snapshot,
             }
         )
@@ -2278,6 +2416,11 @@ def _benchmark_lane_rows_for_run(
                 "hallucination_rate": None,
                 "hallucinated_endpoint_count": None,
                 "hallucinated_heading_count": None,
+                "omission_severity_bucket": None,
+                "omitted_endpoint_count": None,
+                "omitted_heading_count": None,
+                "omitted_path_count": None,
+                "omitted_number_count": None,
                 "contract_recall": None,
                 "contract_failures": None,
                 "contract_checks": None,

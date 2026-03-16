@@ -96,6 +96,11 @@ Per-run table now also includes:
 - `code_block_integrity_score`
 - `table_retention_score`
 - `hallucination_rate`
+- `omission_severity_bucket`
+- `omitted_endpoint_count`
+- `omitted_heading_count`
+- `omitted_path_count`
+- `omitted_number_count`
 - `endpoint_precision`
 - `heading_precision`
 - `quality_gate_ok`

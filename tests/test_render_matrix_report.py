@@ -216,6 +216,37 @@ def test_quality_snapshot_uses_none_for_missing_structures(tmp_path: Path) -> No
     assert snapshot["code_block_integrity_score"] is None
     assert snapshot["table_retention_score"] is None
     assert snapshot["hallucination_rate"] == pytest.approx(0.0)
+    assert snapshot["omission_severity_bucket"] == "none"
+    assert snapshot["omitted_endpoint_count"] == 0
+    assert snapshot["omitted_heading_count"] == 0
+
+
+def test_quality_snapshot_includes_omission_severity_bucket(tmp_path: Path) -> None:
+    module = _load_report_module()
+    quality_snapshot_from_paths = cast(
+        Callable[..., dict[str, Any]],
+        module["_quality_snapshot_from_paths"],
+    )
+
+    source_path = tmp_path / "source.md"
+    output_path = tmp_path / "output.md"
+    source_path.write_text(
+        "# Sample\n\nGET /v1/ping\n\n## Auth\n\n/health\n\n200\n",
+        encoding="utf-8",
+    )
+    output_path.write_text("# Sample\n\n", encoding="utf-8")
+
+    snapshot = quality_snapshot_from_paths(
+        source_path=source_path,
+        output_path=output_path,
+        hard_error_count=0,
+    )
+
+    assert snapshot["omission_severity_bucket"] == "critical"
+    assert snapshot["omitted_endpoint_count"] == 1
+    assert snapshot["omitted_heading_count"] == 1
+    assert snapshot["omitted_path_count"] == 2
+    assert snapshot["omitted_number_count"] == 1
 
 
 def test_benchmark_aggregate_rows_group_by_requested_dimension() -> None:
@@ -278,4 +309,56 @@ def test_benchmark_aggregate_rows_group_by_requested_dimension() -> None:
     assert low_row["avg_quality"] == "80.00"
     assert low_row["avg_char_error_rate"] == "0.300"
     assert low_row["avg_contract_recall"] == "0.800"
+    assert low_row["omission_none_rows"] == 0
+    assert low_row["omission_low_rows"] == 0
+    assert low_row["omission_medium_rows"] == 0
+    assert low_row["omission_high_rows"] == 0
+    assert low_row["omission_critical_rows"] == 0
     assert low_row["hard_error_runs"] == 1
+
+
+def test_benchmark_aggregate_rows_count_omission_buckets() -> None:
+    module = _load_report_module()
+    benchmark_aggregate_rows = cast(
+        Callable[..., list[dict[str, Any]]],
+        module["_benchmark_aggregate_rows"],
+    )
+
+    aggregates = benchmark_aggregate_rows(
+        benchmark_lane_rows=[
+            {
+                "lane": "ocr_lane",
+                "source_kind": "synthetic",
+                "quality_score": 90.0,
+                "char_error_rate": 0.1,
+                "word_error_rate": 0.2,
+                "code_block_integrity_score": 1.0,
+                "table_retention_score": 1.0,
+                "hallucination_rate": 0.0,
+                "contract_recall": None,
+                "omission_severity_bucket": "none",
+                "hard_errors": 0,
+            },
+            {
+                "lane": "ocr_lane",
+                "source_kind": "synthetic",
+                "quality_score": 70.0,
+                "char_error_rate": 0.5,
+                "word_error_rate": 0.6,
+                "code_block_integrity_score": 0.0,
+                "table_retention_score": 0.0,
+                "hallucination_rate": 0.1,
+                "contract_recall": None,
+                "omission_severity_bucket": "high",
+                "hard_errors": 1,
+            },
+        ],
+        group_keys=("lane", "source_kind"),
+    )
+
+    row = aggregates[0]
+    assert row["omission_none_rows"] == 1
+    assert row["omission_high_rows"] == 1
+    assert row["omission_low_rows"] == 0
+    assert row["omission_medium_rows"] == 0
+    assert row["omission_critical_rows"] == 0
