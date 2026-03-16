@@ -170,6 +170,11 @@ Optional quality/speed diagnostics columns:
 - `hallucination_rate`
 - `hallucinated_endpoint_count`
 - `hallucinated_heading_count`
+- `omission_severity_bucket`
+- `omitted_endpoint_count`
+- `omitted_heading_count`
+- `omitted_path_count`
+- `omitted_number_count`
 - `endpoint_precision`
 - `heading_precision`
 - `quality_gate_ok`
@@ -229,6 +234,11 @@ Per-row optional quality fields:
 - `hallucination_rate` (float `0-1`)
 - `hallucinated_endpoint_count` (int)
 - `hallucinated_heading_count` (int)
+- `omission_severity_bucket` (`none`, `low`, `medium`, `high`, `critical`)
+- `omitted_endpoint_count` (int)
+- `omitted_heading_count` (int)
+- `omitted_path_count` (int)
+- `omitted_number_count` (int)
 - `endpoint_recall` (float `0-1`)
 - `heading_recall` (float `0-1`)
 - `contract_recall` (float `0-1` when fixture contract exists)
