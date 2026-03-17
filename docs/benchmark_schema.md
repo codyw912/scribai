@@ -210,8 +210,16 @@ Top-level fields:
 - `benchmark_size_bucket_summary` (array)
 - `benchmark_doc_type_summary` (array)
 - `benchmark_lane_rows` (array)
+- `selection_stage_summary` (object or null)
 - `selection_summary` (object or null)
 - `rows` (array)
+
+Selection stage summary fields:
+
+- `screening_variant_families` (array)
+- `screening_profiles` (array)
+- `screening_candidates` (array)
+- `promotion_profiles` (array)
 
 Selection summary fields:
 

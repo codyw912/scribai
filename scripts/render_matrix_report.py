@@ -953,6 +953,10 @@ def main() -> int:
                 }
             )
 
+    selection_stage_summary = _selection_stage_summary(
+        benchmark_lane_rows=benchmark_lane_rows,
+    )
+
     selection_summary = _selection_summary(
         profile_summary_rows=profile_summary_rows,
         quality_floor=args.selection_quality_floor,
@@ -960,6 +964,80 @@ def main() -> int:
         throughput_target=args.selection_min_throughput,
         max_hard_error_rate=args.selection_max_hard_error_rate,
     )
+
+    if selection_stage_summary is not None:
+        lines.extend(
+            [
+                "## Selection Stages",
+                "",
+                "- screening_variant_families: `{} `".format(
+                    ", ".join(
+                        cast(
+                            list[str],
+                            selection_stage_summary["screening_variant_families"],
+                        )
+                    )
+                ).replace(" `", "`"),
+            ]
+        )
+        lines.extend(
+            [
+                "",
+                "### Screening Frontier",
+                "",
+                "| profile | provider | rows | avg_quality | avg_visible_tok_s | hard_error_rate | frontier |",
+                "|---|---|---:|---:|---:|---:|---|",
+            ]
+        )
+        screening_profiles = selection_stage_summary.get("screening_profiles")
+        assert isinstance(screening_profiles, list)
+        candidate_profiles = {
+            str(row.get("profile"))
+            for row in cast(
+                list[dict[str, object]],
+                selection_stage_summary.get("screening_candidates", []),
+            )
+            if isinstance(row, dict)
+        }
+        for row in screening_profiles:
+            if not isinstance(row, dict):
+                continue
+            lines.append(
+                "| {} | {} | {} | {} | {} | {} | {} |".format(
+                    _fmt(row.get("profile")),
+                    _fmt(row.get("provider")),
+                    _fmt(row.get("rows")),
+                    _fmt(row.get("avg_quality")),
+                    _fmt(row.get("avg_visible_tok_s")),
+                    _fmt(row.get("hard_error_rate")),
+                    "yes" if str(row.get("profile")) in candidate_profiles else "no",
+                )
+            )
+        lines.extend(
+            [
+                "",
+                "### Promotion Set",
+                "",
+                "| profile | provider | rows | avg_quality | avg_visible_tok_s | hard_error_rate |",
+                "|---|---|---:|---:|---:|---:|",
+            ]
+        )
+        promotion_profiles = selection_stage_summary.get("promotion_profiles")
+        assert isinstance(promotion_profiles, list)
+        for row in promotion_profiles:
+            if not isinstance(row, dict):
+                continue
+            lines.append(
+                "| {} | {} | {} | {} | {} | {} |".format(
+                    _fmt(row.get("profile")),
+                    _fmt(row.get("provider")),
+                    _fmt(row.get("rows")),
+                    _fmt(row.get("avg_quality")),
+                    _fmt(row.get("avg_visible_tok_s")),
+                    _fmt(row.get("hard_error_rate")),
+                )
+            )
+        lines.append("")
 
     if selection_summary is not None:
         constraints = selection_summary["constraints"]
@@ -1365,6 +1443,7 @@ def main() -> int:
             "benchmark_size_bucket_summary": benchmark_size_bucket_summary_rows,
             "benchmark_doc_type_summary": benchmark_doc_type_summary_rows,
             "benchmark_lane_rows": benchmark_lane_rows,
+            "selection_stage_summary": selection_stage_summary,
             "selection_summary": selection_summary,
             "rows": rows,
         }
@@ -2243,6 +2322,139 @@ def _selection_summary(
     }
 
 
+def _selection_stage_summary(
+    *,
+    benchmark_lane_rows: list[dict[str, object]],
+) -> dict[str, object] | None:
+    screening_variant_families = ["clean_pdf", "scan_light"]
+    screening_rows = [
+        row
+        for row in benchmark_lane_rows
+        if row.get("lane") == "full_pipeline_lane"
+        and row.get("variant_family") in screening_variant_families
+    ]
+    if not screening_rows:
+        return None
+
+    screening_profiles = _profile_stage_rows(screening_rows)
+    screening_candidates = _pareto_frontier(screening_profiles)
+    candidate_profiles = {
+        str(row.get("profile", ""))
+        for row in screening_candidates
+        if row.get("profile")
+    }
+    promotion_rows = [
+        row
+        for row in benchmark_lane_rows
+        if row.get("lane") == "full_pipeline_lane"
+        and str(row.get("profile", "")) in candidate_profiles
+    ]
+    promotion_profiles = _profile_stage_rows(promotion_rows)
+
+    return {
+        "screening_variant_families": screening_variant_families,
+        "screening_profiles": screening_profiles,
+        "screening_candidates": screening_candidates,
+        "promotion_profiles": promotion_profiles,
+    }
+
+
+def _profile_stage_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    buckets: dict[str, dict[str, object]] = {}
+    for row in rows:
+        profile = str(row.get("profile", "")).strip()
+        if not profile:
+            continue
+        bucket = buckets.setdefault(
+            profile,
+            {
+                "profile": profile,
+                "provider": row.get("provider"),
+                "rows": 0,
+                "quality_values": [],
+                "visible_tok_values": [],
+                "hard_error_runs": 0,
+            },
+        )
+        bucket["rows"] = int(bucket["rows"]) + 1
+        quality = _coerce_float(row.get("quality_score"))
+        if quality is not None:
+            quality_values = cast(list[float], bucket["quality_values"])
+            quality_values.append(quality)
+        visible = _coerce_float(row.get("visible_tok_s"))
+        if visible is not None:
+            visible_values = cast(list[float], bucket["visible_tok_values"])
+            visible_values.append(visible)
+        hard_errors = row.get("hard_errors")
+        if isinstance(hard_errors, int) and hard_errors > 0:
+            bucket["hard_error_runs"] = int(bucket["hard_error_runs"]) + 1
+
+    result: list[dict[str, object]] = []
+    for profile in sorted(buckets):
+        bucket = buckets[profile]
+        quality_values = cast(list[float], bucket["quality_values"])
+        visible_values = cast(list[float], bucket["visible_tok_values"])
+        rows_count = int(bucket["rows"])
+        result.append(
+            {
+                "profile": profile,
+                "provider": bucket.get("provider"),
+                "rows": rows_count,
+                "avg_quality": (
+                    round(sum(quality_values) / len(quality_values), 2)
+                    if quality_values
+                    else None
+                ),
+                "avg_visible_tok_s": (
+                    round(sum(visible_values) / len(visible_values), 3)
+                    if visible_values
+                    else None
+                ),
+                "hard_error_rate": (
+                    round(int(bucket["hard_error_runs"]) / rows_count, 3)
+                    if rows_count > 0
+                    else None
+                ),
+            }
+        )
+    return result
+
+
+def _pareto_frontier(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    frontier: list[dict[str, object]] = []
+    for row in rows:
+        row_quality = _coerce_float(row.get("avg_quality"))
+        row_speed = _coerce_float(row.get("avg_visible_tok_s"))
+        if row_quality is None or row_speed is None:
+            continue
+        dominated = False
+        for other in rows:
+            if other is row:
+                continue
+            other_quality = _coerce_float(other.get("avg_quality"))
+            other_speed = _coerce_float(other.get("avg_visible_tok_s"))
+            if other_quality is None or other_speed is None:
+                continue
+            if (
+                other_quality >= row_quality
+                and other_speed >= row_speed
+                and (other_quality > row_quality or other_speed > row_speed)
+            ):
+                dominated = True
+                break
+        if not dominated:
+            frontier.append(row)
+
+    frontier.sort(
+        key=lambda row: (
+            _sort_float(row.get("avg_quality"), descending=True),
+            _sort_float(row.get("avg_visible_tok_s"), descending=True),
+            str(row.get("profile", "")),
+        )
+    )
+    return frontier
+
+
 def _sort_float(value: object, *, descending: bool) -> float:
     number = _coerce_float(value)
     if number is None:
@@ -2589,6 +2801,8 @@ def _benchmark_lane_rows_for_run(
 
     base_fields = {
         "run_id": run_id,
+        "profile": row.get("profile"),
+        "provider": row.get("provider"),
         "fixture_id": fixture_id,
         "variant_id": row.get("variant_id"),
         "variant_family": row.get("variant_family"),
@@ -2596,6 +2810,7 @@ def _benchmark_lane_rows_for_run(
         "source_kind": source_kind,
         "size_bucket": row.get("size_bucket"),
         "doc_type": row.get("doc_type"),
+        "visible_tok_s": row.get("visible_tok_s"),
         "hard_errors": row.get("hard_errors"),
     }
 
