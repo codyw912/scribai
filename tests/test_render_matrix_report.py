@@ -445,3 +445,126 @@ def test_selection_summary_returns_none_without_constraints() -> None:
     )
 
     assert summary is None
+
+
+def test_selection_stage_summary_uses_screening_frontier_and_promotion_rows() -> None:
+    module = _load_report_module()
+    selection_stage_summary = cast(
+        Callable[..., dict[str, Any] | None],
+        module["_selection_stage_summary"],
+    )
+
+    summary = selection_stage_summary(
+        benchmark_lane_rows=[
+            {
+                "profile": "profiles/a.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "clean_pdf",
+                "quality_score": 85.0,
+                "visible_tok_s": 10.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/a.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "scan_light",
+                "quality_score": 80.0,
+                "visible_tok_s": 12.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/a.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "scan_medium",
+                "quality_score": 78.0,
+                "visible_tok_s": 11.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/b.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "clean_pdf",
+                "quality_score": 80.0,
+                "visible_tok_s": 14.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/b.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "scan_light",
+                "quality_score": 78.0,
+                "visible_tok_s": 16.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/b.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "scan_medium",
+                "quality_score": 74.0,
+                "visible_tok_s": 15.0,
+                "hard_errors": 1,
+            },
+            {
+                "profile": "profiles/c.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "clean_pdf",
+                "quality_score": 70.0,
+                "visible_tok_s": 9.0,
+                "hard_errors": 0,
+            },
+            {
+                "profile": "profiles/c.yaml",
+                "provider": "openrouter",
+                "lane": "full_pipeline_lane",
+                "variant_family": "scan_light",
+                "quality_score": 72.0,
+                "visible_tok_s": 10.0,
+                "hard_errors": 0,
+            },
+        ]
+    )
+
+    assert summary is not None
+    screening_candidates = summary["screening_candidates"]
+    assert [row["profile"] for row in screening_candidates] == [
+        "profiles/a.yaml",
+        "profiles/b.yaml",
+    ]
+    promotion_profiles = summary["promotion_profiles"]
+    assert [row["profile"] for row in promotion_profiles] == [
+        "profiles/a.yaml",
+        "profiles/b.yaml",
+    ]
+    assert summary["screening_variant_families"] == ["clean_pdf", "scan_light"]
+
+
+def test_selection_stage_summary_returns_none_without_screening_rows() -> None:
+    module = _load_report_module()
+    selection_stage_summary = cast(
+        Callable[..., dict[str, Any] | None],
+        module["_selection_stage_summary"],
+    )
+
+    assert (
+        selection_stage_summary(
+            benchmark_lane_rows=[
+                {
+                    "profile": "profiles/a.yaml",
+                    "provider": "openrouter",
+                    "lane": "ocr_lane",
+                    "variant_family": "scan_medium",
+                    "quality_score": 80.0,
+                    "visible_tok_s": 10.0,
+                    "hard_errors": 0,
+                }
+            ]
+        )
+        is None
+    )

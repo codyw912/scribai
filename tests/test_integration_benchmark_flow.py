@@ -186,5 +186,6 @@ def test_benchmark_scripts_run_end_to_end(tmp_path: Path) -> None:
     assert report_json["benchmark_noise_level_summary"]
     assert report_json["benchmark_size_bucket_summary"]
     assert report_json["benchmark_doc_type_summary"]
+    assert report_json["selection_stage_summary"] is not None
     assert report_json["selection_summary"] is not None
     assert report_json["selection_summary"]["recommended_profile"] == str(profile_path)
